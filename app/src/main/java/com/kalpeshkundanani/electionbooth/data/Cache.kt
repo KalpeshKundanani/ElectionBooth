@@ -1,8 +1,7 @@
-package com.kalpeshkundanani.electionbooth
+package com.kalpeshkundanani.electionbooth.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import java.security.AccessControlContext
 
 object Cache {
     private const val IS_LOGGED_IN = "IS_LOGGED_IN"

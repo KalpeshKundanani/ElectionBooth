@@ -1,13 +1,21 @@
 package com.kalpeshkundanani.electionbooth
 
+import android.app.ProgressDialog
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.kalpeshkundanani.electionbooth.data.Cache
+import com.kalpeshkundanani.electionbooth.data.StaticData
+import com.kalpeshkundanani.electionbooth.models.BoothUser
 import java.text.SimpleDateFormat
 import java.util.*
+
 
 class LoginActivity : AppCompatActivity(), View.OnClickListener {
 
@@ -17,15 +25,40 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
         disableAppAfter("08/12/2022") ?: return
-        if(Cache.getIsLoggedIn(this)) {
-            openApp()
-            return
+        loadData {
+            if(Cache.getIsLoggedIn(this)) {
+                openApp()
+                return@loadData
+            }
+            setPhoneNumberInputView()
+            findViewById<View>(R.id.btn_resend).setOnClickListener(this)
+            findViewById<View>(R.id.btn_submit).setOnClickListener(this)
+            findViewById<View>(R.id.btn_get_otp).setOnClickListener(this)
         }
-        setPhoneNumberInputView()
-        findViewById<View>(R.id.btn_resend).setOnClickListener(this)
-        findViewById<View>(R.id.btn_submit).setOnClickListener(this)
-        findViewById<View>(R.id.btn_get_otp).setOnClickListener(this)
     }
+
+    private fun loadData(next: () -> Unit) {
+        val dialog = ProgressDialog.show(
+            this, "",
+            "Loading. Please wait...", true
+        )
+        dialog.show()
+        Thread {
+            val gson = Gson()
+            val listType = object : TypeToken<List<BoothUser?>?>() {}.type
+            val fileName = "booth_users.json"
+            val json = application.assets.open(fileName).bufferedReader().use{
+                it.readText()
+            }
+            StaticData.boothUsers = gson.fromJson(json, listType)
+            runOnUiThread {
+                dialog.dismiss()
+                next()
+            }
+        }.start()
+    }
+
+
 
     private fun setPhoneNumberInputView() {
         findViewById<View>(R.id.tv_cant_use_app).visibility = View.GONE
