@@ -3,7 +3,6 @@ package com.kalpeshkundanani.electionbooth
 import android.app.ProgressDialog
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.Toast
@@ -26,14 +25,11 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
         setContentView(R.layout.activity_login)
         disableAppAfter("08/12/2022") ?: return
         loadData {
-            if(Cache.getIsLoggedIn(this)) {
+            if (Cache.getIsLoggedIn(this)) {
                 openApp()
                 return@loadData
             }
-            setPhoneNumberInputView()
-            findViewById<View>(R.id.btn_resend).setOnClickListener(this)
             findViewById<View>(R.id.btn_submit).setOnClickListener(this)
-            findViewById<View>(R.id.btn_get_otp).setOnClickListener(this)
         }
     }
 
@@ -47,7 +43,7 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
             val gson = Gson()
             val listType = object : TypeToken<List<BoothUser?>?>() {}.type
             val fileName = "booth_users.json"
-            val json = application.assets.open(fileName).bufferedReader().use{
+            val json = application.assets.open(fileName).bufferedReader().use {
                 it.readText()
             }
             StaticData.boothUsers = gson.fromJson(json, listType)
@@ -56,18 +52,6 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
                 next()
             }
         }.start()
-    }
-
-
-
-    private fun setPhoneNumberInputView() {
-        findViewById<View>(R.id.tv_cant_use_app).visibility = View.GONE
-        findViewById<View>(R.id.ti_otp).visibility = View.GONE
-        findViewById<View>(R.id.btn_resend).visibility = View.GONE
-        findViewById<View>(R.id.btn_submit).visibility = View.GONE
-
-        findViewById<View>(R.id.btn_get_otp).visibility = View.VISIBLE
-        findViewById<View>(R.id.ti_phone_number).visibility = View.VISIBLE
     }
 
     private fun disableAppAfter(dateStr: String): Boolean? {
@@ -81,16 +65,12 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
             findViewById<View>(R.id.tv_cant_use_app).visibility = View.VISIBLE
             findViewById<View>(R.id.ti_phone_number).visibility = View.GONE
             findViewById<View>(R.id.ti_otp).visibility = View.GONE
-            findViewById<View>(R.id.btn_get_otp).visibility = View.GONE
-            findViewById<View>(R.id.btn_resend).visibility = View.GONE
             findViewById<View>(R.id.btn_submit).visibility = View.GONE
             null
         } else {
             findViewById<View>(R.id.tv_cant_use_app).visibility = View.GONE
             findViewById<View>(R.id.ti_phone_number).visibility = View.VISIBLE
             findViewById<View>(R.id.ti_otp).visibility = View.VISIBLE
-            findViewById<View>(R.id.btn_get_otp).visibility = View.VISIBLE
-            findViewById<View>(R.id.btn_resend).visibility = View.VISIBLE
             findViewById<View>(R.id.btn_submit).visibility = View.VISIBLE
             true
         }
@@ -98,35 +78,39 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
 
     override fun onClick(p0: View?) {
         when (p0?.id) {
-            R.id.btn_resend -> onResendClick()
             R.id.btn_submit -> onSubmitClick()
-            R.id.btn_get_otp -> onGetOtpClick()
-        }
-    }
-
-    private fun onGetOtpClick() {
-        val phoneInput = findViewById<EditText>(R.id.et_phone_number).text.toString()
-        val hasPhoneInput = phoneInput.isNotEmpty() && phoneInput.length == 10
-        if (hasPhoneInput) {
-            Toast.makeText(this, "OTP sent to $phoneInput", Toast.LENGTH_LONG).show()
-            findViewById<View>(R.id.ti_otp).visibility = View.VISIBLE
-            findViewById<View>(R.id.btn_get_otp).visibility = View.GONE
-            findViewById<View>(R.id.btn_resend).visibility = View.VISIBLE
-            findViewById<View>(R.id.btn_submit).visibility = View.VISIBLE
-            findViewById<EditText>(R.id.et_otp).text = null
-        } else {
-            Toast.makeText(this, "Please enter 10 digit phone number", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun onSubmitClick() {
-        val otp = findViewById<EditText>(R.id.et_otp).text.toString()
-        val hasOtp = otp.isNotEmpty()
-        if (hasOtp) {
-            Cache.setIsLoggedIn(this, true)
-            openApp()
+
+        val phoneNumber = findViewById<EditText>(R.id.et_phone_number).text.toString()
+        val hasPhoneNumber = phoneNumber.isNotEmpty() && phoneNumber.length == 10
+
+        if(hasPhoneNumber) {
+            val user = StaticData.boothUsers?.filterNotNull()
+                ?.firstOrNull { it.phoneNumber == phoneNumber.toLongOrNull() }
+            if (user == null) {
+                Toast.makeText(this, "Number not found.", Toast.LENGTH_LONG).show()
+            } else {
+                val otpForNumber = user.otp
+
+                val otp = findViewById<EditText>(R.id.et_otp).text.toString()
+                val hasOtp = otp.isNotEmpty()
+                if (hasOtp) {
+                    if (otpForNumber == otp.toLongOrNull()) {
+                        Cache.setIsLoggedIn(this, true)
+                        openApp()
+                    } else {
+                        Toast.makeText(this, "Incorrect OTP.", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(this, "Please enter OTP.", Toast.LENGTH_LONG).show()
+                }
+
+            }
         } else {
-            Toast.makeText(this, "Please enter OTP.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Please enter 10 digit phone number.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -134,9 +118,5 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
         val intent = Intent(this, MainActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
-    }
-
-    private fun onResendClick() {
-        onGetOtpClick()
     }
 }
