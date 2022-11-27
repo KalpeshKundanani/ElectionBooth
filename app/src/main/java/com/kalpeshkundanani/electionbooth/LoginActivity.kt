@@ -10,7 +10,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kalpeshkundanani.electionbooth.data.Cache
-import com.kalpeshkundanani.electionbooth.data.StaticData
 import com.kalpeshkundanani.electionbooth.models.BoothUser
 import java.text.SimpleDateFormat
 import java.util.*
@@ -19,6 +18,7 @@ import java.util.*
 class LoginActivity : AppCompatActivity(), View.OnClickListener {
 
     private val TAG = "newE"
+    private var boothUsers: List<BoothUser?>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +46,7 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
             val json = application.assets.open(fileName).bufferedReader().use {
                 it.readText()
             }
-            StaticData.boothUsers = gson.fromJson(json, listType)
+            boothUsers = gson.fromJson(json, listType)
             runOnUiThread {
                 dialog.dismiss()
                 next()
@@ -84,33 +84,38 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
 
     private fun onSubmitClick() {
 
-        val phoneNumber = findViewById<EditText>(R.id.et_phone_number).text.toString()
+        val phoneNumberInput = findViewById<EditText>(R.id.et_phone_number)
+        val phoneNumber = phoneNumberInput.text.toString()
         val hasPhoneNumber = phoneNumber.isNotEmpty() && phoneNumber.length == 10
 
-        if(hasPhoneNumber) {
-            val user = StaticData.boothUsers?.filterNotNull()
+        if (!hasPhoneNumber) {
+            phoneNumberInput.requestFocus()
+            phoneNumberInput.error = "Please enter 10 digit phone number."
+        } else {
+            val user = boothUsers?.filterNotNull()
                 ?.firstOrNull { it.phoneNumber == phoneNumber.toLongOrNull() }
             if (user == null) {
-                Toast.makeText(this, "Number not found.", Toast.LENGTH_LONG).show()
+                phoneNumberInput.requestFocus()
+                phoneNumberInput.error = "Number not found."
             } else {
                 val otpForNumber = user.otp
 
-                val otp = findViewById<EditText>(R.id.et_otp).text.toString()
+                val otpTextField = findViewById<EditText>(R.id.et_otp)
+                otpTextField.requestFocus()
+                val otp = otpTextField.text.toString()
                 val hasOtp = otp.isNotEmpty()
                 if (hasOtp) {
                     if (otpForNumber == otp.toLongOrNull()) {
                         Cache.setIsLoggedIn(this, true)
                         openApp()
                     } else {
-                        Toast.makeText(this, "Incorrect OTP.", Toast.LENGTH_LONG).show()
+                        otpTextField.error = "Incorrect OTP."
                     }
                 } else {
-                    Toast.makeText(this, "Please enter OTP.", Toast.LENGTH_LONG).show()
+                    otpTextField.error = "Please enter OTP."
                 }
 
             }
-        } else {
-            Toast.makeText(this, "Please enter 10 digit phone number.", Toast.LENGTH_LONG).show()
         }
     }
 
